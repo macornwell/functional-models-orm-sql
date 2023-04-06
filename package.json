@@ -1,0 +1,85 @@
+{
+  "name": "functional-models-orm-sql",
+  "version": "1.0.0",
+  "description": "A sql based backend for functional-models-orm",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "watch": "tsc -w",
+    "test": "mocha -r ts-node/register test/**/*.test.ts",
+    "test:coverage": "nyc npm run test",
+    "feature-tests": "node ./node_modules/.bin/cucumber-js --require ./features/stepDefinitions/*.js",
+    "coverage": "nyc --all --reporter=lcov npm test",
+    "build": "tsc -p ./tsconfig.build.json && cp package.json ./dist && cp README.md ./dist",
+    "dist": "npm run build && cd dist && npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/monolithst/functional-models-orm-sql.git"
+  },
+  "nyc": {
+    "extends": "@istanbuljs/nyc-config-typescript",
+    "check-coverage": true,
+    "all": true,
+    "include": [
+      "src/**/!(*.test.*).[tj]s?(x)"
+    ],
+    "exclude": [
+      "src/_tests_/**/*.*"
+    ],
+    "reporter": [
+      "html",
+      "lcov",
+      "text",
+      "text-summary"
+    ],
+    "report-dir": "coverage"
+  },
+  "keywords": [
+    "orm",
+    "javascript",
+    "nodejs"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "author": "Mike Cornwell",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/monolithst/functional-models-orm-sql/issues"
+  },
+  "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.1",
+    "@types/chai": "^4.3.0",
+    "@types/lodash": "^4.14.177",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.11.7",
+    "@types/sinon": "^10.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.7.0",
+    "babel-eslint": "^10.1.0",
+    "chai": "^4.3.0",
+    "cucumber": "^7.0.0-rc.0",
+    "eslint": "^7.19.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-plugin-functional": "^3.2.1",
+    "eslint-plugin-import": "^2.22.1",
+    "mocha": "^8.2.1",
+    "nyc": "^15.1.0",
+    "proxyquire": "^2.1.3",
+    "sinon": "^11.1.2",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.7.4"
+  },
+  "homepage": "https://github.com/monolithst/functional-models-orm-sql#readme",
+  "dependencies": {
+    "functional-models": "^2.0.13",
+    "functional-models-orm": "^2.0.20",
+    "knex": "^2.4.2",
+    "lodash": "^4.17.21",
+    "modern-async": "^1.1.3",
+    "mysql": "^2.18.1",
+    "pg": "^8.10.0",
+    "sqlite3": "^5.1.6"
+  }
+}
