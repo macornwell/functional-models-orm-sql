@@ -21,6 +21,7 @@ import {
   PropertyInstance,
   ModelInstanceInputData,
   TypedJsonObj,
+  Maybe,
 } from 'functional-models/interfaces'
 import {
   PROPERTY_TYPES as DEFAULT_PROPERTY_TYPES
@@ -79,7 +80,7 @@ const knexDatastoreProvider = ({
       const definitions = model.getModelDefinition()
       const tableName = getTableNameForModel<T>(model)
       const results = await ormQueryToKnex(knex, tableName, ormQuery)
-      const formatted = results.instances.map(instance => toJsonParser<T>(definitions, instance))
+      const formatted = results.instances.map(instance => toJsonParser<T>(definitions, instance)).filter(x => x)
       return {
         instances: formatted,
         page: results.page
@@ -96,6 +97,9 @@ const knexDatastoreProvider = ({
       const tableName = getTableNameForModel<T>(model)
       const key = model.getPrimaryKeyName()
       const fromDb = await wrappedKnex.getByPrimaryKey(tableName, key, id)
+      if (!fromDb) {
+        return undefined
+      }
       return toJsonParser<T>(definitions, fromDb) 
     })
   }
@@ -148,7 +152,7 @@ const knexDatastoreProvider = ({
     return Promise.resolve().then(async () => {
       const model = instance.getModel()
       const tableName = getTableNameForModel<T>(model)
-      const primaryKey = instance.getPrimaryKey()
+      const primaryKey = await instance.getPrimaryKey()
       const primaryKeyName = instance.getPrimaryKeyName()
       await knex(tableName)
         .where({[primaryKeyName]: primaryKey})

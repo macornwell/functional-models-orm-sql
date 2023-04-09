@@ -115,9 +115,6 @@ export const toJsonAble = (propertyTypeToParser: PropertyTypeToParser) => (prope
 
 export const toTypedJsonObj = (propertyTypeToParser: PropertyTypeToParser) => <T extends FunctionalModel>(definition: ModelDefinition<T>, obj: any) : TypedJsonObj<T> => {
   const properties = definition.properties
-  if (!obj) {
-    return {}  as TypedJsonObj<T>
-  }
   const parsers = toJsonAble(propertyTypeToParser)
   return Object.entries(properties)
     .map(([key, property]:[key: string, property: any]) => ({ key, property: (property as PropertyInstance<any>).getPropertyType()}))

@@ -6,6 +6,7 @@ import {
   PropertyStatement,
 } from 'functional-models-orm/interfaces'
 import { EQUALITY_SYMBOLS } from 'functional-models-orm/constants'
+import invoke from 'lodash/invoke'
 import flow from 'lodash/flow'
 import {
   SimpleSqlObject,
@@ -76,8 +77,8 @@ export const ormQueryToKnex = (knex: any, table: string, ormQuery: OrmQuery) : P
           ? `${value}%`
           : value
         const value3 = statement.options.endsWith
-          ? `%${value}`
-          : value
+          ? `%${value2}`
+          : value2
         return value3
       }
 
@@ -88,9 +89,9 @@ export const ormQueryToKnex = (knex: any, table: string, ormQuery: OrmQuery) : P
             : 'orWhereILike'
         }
         if (statement.options.startsWith || statement.options.endsWith) {
-          return andOr === 'and'
-            ? 'whereLike'
-            : 'orWhereLike'
+          return andOr === 'or'
+            ? 'orWhereLike'
+            : 'whereLike'
         }
         return andOr === 'and'
           ? 'where'
@@ -105,8 +106,8 @@ export const ormQueryToKnex = (knex: any, table: string, ormQuery: OrmQuery) : P
       } 
 
       const propertyQueries = (knexInstance: any) => {
-        return flow(ormQuery.chain.map((statement) => {
-          return (k: any, andOr: string) => {
+        const flowResults = flow(ormQuery.chain.map((statement) => {
+          return ([k, andOr]:[k: any, andOr:string]) => {
             if (statement.type === 'and' ||
               statement.type === 'or' ||
               statement.type === 'property') {
@@ -115,7 +116,7 @@ export const ormQueryToKnex = (knex: any, table: string, ormQuery: OrmQuery) : P
                 const searchString = _createSearchString(propertyStatement)
                 const whereStatement = _getWhereFuncKey(propertyStatement, andOr)
                 const whereArgs = _whereArgs(propertyStatement, searchString)
-                return [k[whereStatement](...whereArgs), andOr]
+                return [invoke(k, whereStatement, ...whereArgs), andOr]
               } else if (statement.type === 'and') {
                 return [k, 'and']
               } else if (statement.type === 'or') {
@@ -126,9 +127,15 @@ export const ormQueryToKnex = (knex: any, table: string, ormQuery: OrmQuery) : P
             return [k, andOr]
           }
         }))([knexInstance, 'and'])
+        return flowResults[0]
       }
 
+      const selectEverythingQuery = (k: any) => k.select('*')
+      const fromTable = (k: any) => k.table(table)
+
       const result = await flow([
+        selectEverythingQuery,
+        fromTable,
         propertyQueries,
         datesBeforeQuery,
         datesAfterQuery,
