@@ -13,3 +13,4 @@ Since this library wraps knex, many of the databases that knex supports are supp
 - MySQL
 - MariaDB
 - SQLite3
+
