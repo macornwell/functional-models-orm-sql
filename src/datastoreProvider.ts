@@ -1,74 +1,32 @@
-import omit from 'lodash/omit'
-import flow from 'lodash/flow'
-import groupBy from 'lodash/groupBy'
-import merge from 'lodash/merge'
-import { mapLimit } from 'modern-async'
-import {
-  DatastoreProvider,
-  DatesAfterStatement,
-  DatesBeforeStatement,
-  OrmQuery,
-  PropertyStatement,
-} from 'functional-models-orm/interfaces'
+import { DatastoreProvider, OrmQuery } from 'functional-models-orm/interfaces'
 import {
   FunctionalModel,
-  PrimaryKeyType,
   Model,
   ModelInstance,
-  JsonAble,
-  JsonObj,
-  ModelDefinition,
-  PropertyInstance,
-  ModelInstanceInputData,
-  TypedJsonObj,
-  Maybe,
+  PrimaryKeyType,
 } from 'functional-models/interfaces'
+import groupBy from 'lodash/groupBy'
+import { mapLimit } from 'modern-async'
+import { PropertyTypeToParser } from './interfaces'
 import {
-  PROPERTY_TYPES as DEFAULT_PROPERTY_TYPES
-} from 'functional-models/constants'
-import { EQUALITY_SYMBOLS } from 'functional-models-orm/constants'
-import { 
-  SimpleSqlOrmSearchResult,
-  SimpleSqlObject,
-  SimpleSqlValue,
-  PropertyTypeToParser,
-} from './interfaces'
-import { 
   getTableNameForModel as defaultTableNameGetter,
-  parsers,
   knex as knexLib,
+  parsers,
 } from './lib'
 
-const {
-  toSimpleSqlObject,
-  BasicPropertyTypeToParser,
-  toTypedJsonObj,
-} = parsers
+const { toSimpleSqlObject, BasicPropertyTypeToParser, toTypedJsonObj } = parsers
 
-const {
-  knexWrapper,
-  ormQueryToKnex,
-} = knexLib
-
-const _equalitySymbolToMongoSymbol = {
-  [EQUALITY_SYMBOLS.EQUALS]: '$eq',
-  [EQUALITY_SYMBOLS.GT]: '$gt',
-  [EQUALITY_SYMBOLS.GTE]: '$gte',
-  [EQUALITY_SYMBOLS.LT]: '$lt',
-  [EQUALITY_SYMBOLS.LTE]: '$lte',
-}
+const { knexWrapper, ormQueryToKnex } = knexLib
 
 const knexDatastoreProvider = ({
   knex,
   getTableNameForModel = defaultTableNameGetter,
-  propertyTypeToParser = BasicPropertyTypeToParser
+  propertyTypeToParser = BasicPropertyTypeToParser,
 }: {
-  knex: any,
-  getTableNameForModel: <T extends FunctionalModel>(
-    model: Model<T>) => string,
+  knex: any
+  getTableNameForModel: <T extends FunctionalModel>(model: Model<T>) => string
   propertyTypeToParser: PropertyTypeToParser
 }): DatastoreProvider => {
-
   const wrappedKnex = knexWrapper(knex)
   const toJsonParser = toTypedJsonObj(propertyTypeToParser)
 
@@ -80,10 +38,12 @@ const knexDatastoreProvider = ({
       const definitions = model.getModelDefinition()
       const tableName = getTableNameForModel<T>(model)
       const results = await ormQueryToKnex(knex, tableName, ormQuery)
-      const formatted = results.instances.map(instance => toJsonParser<T>(definitions, instance)).filter(x => x)
+      const formatted = results.instances
+        .map(instance => toJsonParser<T>(definitions, instance))
+        .filter(x => x)
       return {
         instances: formatted,
-        page: results.page
+        page: results.page,
       }
     })
   }
@@ -100,7 +60,7 @@ const knexDatastoreProvider = ({
       if (!fromDb) {
         return undefined
       }
-      return toJsonParser<T>(definitions, fromDb) 
+      return toJsonParser<T>(definitions, fromDb)
     })
   }
 
@@ -117,8 +77,8 @@ const knexDatastoreProvider = ({
       await wrappedKnex.updateOrCreate(tableName, key, formatted)
       const id = await instance.getPrimaryKey()
       const fromDb = await wrappedKnex.getByPrimaryKey(tableName, key, id)
-      const definitions = instance.getModel().getModelDefinition() 
-      return toJsonParser<T>(definitions, fromDb) 
+      const definitions = instance.getModel().getModelDefinition()
+      return toJsonParser<T>(definitions, fromDb)
     })
   }
 
@@ -137,11 +97,17 @@ const knexDatastoreProvider = ({
       const model = instances[0].getModel()
       const definitions = model.getModelDefinition()
       const tableName = getTableNameForModel<T>(model)
-      const readyToSend = await mapLimit(instances, async (instance: ModelInstance<T, TModel>) => {
-        const obj = await instance.toObj()
-        return toSimpleSqlObject(definitions, obj)
-      }, 1)
-      await knex.transaction((trx: any) => trx.insert(readyToSend).into(tableName))
+      const readyToSend = await mapLimit(
+        instances,
+        async (instance: ModelInstance<T, TModel>) => {
+          const obj = await instance.toObj()
+          return toSimpleSqlObject(definitions, obj)
+        },
+        1
+      )
+      await knex.transaction((trx: any) =>
+        trx.insert(readyToSend).into(tableName)
+      )
       return
     })
   }
@@ -155,7 +121,7 @@ const knexDatastoreProvider = ({
       const primaryKey = await instance.getPrimaryKey()
       const primaryKeyName = instance.getPrimaryKeyName()
       await knex(tableName)
-        .where({[primaryKeyName]: primaryKey})
+        .where({ [primaryKeyName]: primaryKey })
         .del(primaryKey)
       return
     })
