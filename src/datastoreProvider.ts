@@ -24,8 +24,8 @@ const knexDatastoreProvider = ({
   propertyTypeToParser = BasicPropertyTypeToParser,
 }: {
   knex: any
-  getTableNameForModel: <T extends FunctionalModel>(model: Model<T>) => string
-  propertyTypeToParser: PropertyTypeToParser
+  getTableNameForModel?: <T extends FunctionalModel>(model: Model<T>) => string
+  propertyTypeToParser?: PropertyTypeToParser
 }): DatastoreProvider => {
   const wrappedKnex = knexWrapper(knex)
   const toJsonParser = toTypedJsonObj(propertyTypeToParser)
