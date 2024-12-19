@@ -1,6 +1,6 @@
 {
   "name": "functional-models-orm-sql",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A sql based backend for functional-models-orm",
   "main": "index.js",
   "types": "index.d.ts",
@@ -89,9 +89,6 @@
     "functional-models-orm": "^2.1.0",
     "knex": "^2.4.2",
     "lodash": "^4.17.21",
-    "modern-async": "^1.1.3",
-    "mysql": "^2.18.1",
-    "pg": "^8.10.0",
-    "sqlite3": "^5.1.6"
+    "modern-async": "^1.1.3"
   }
 }
