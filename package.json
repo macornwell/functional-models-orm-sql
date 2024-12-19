@@ -1,6 +1,6 @@
 {
   "name": "functional-models-orm-sql",
-  "version": "2.1.4",
+  "version": "2.1.3",
   "description": "A sql based backend for functional-models-orm",
   "main": "index.js",
   "types": "index.d.ts",
