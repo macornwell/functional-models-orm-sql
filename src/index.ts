@@ -1,3 +1,3 @@
-import datastoreProvider from './datastoreProvider'
+import * as datastoreAdapter from './datastoreAdapter'
 
-export { datastoreProvider }
+export { datastoreAdapter }
