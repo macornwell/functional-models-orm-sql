@@ -19,6 +19,7 @@ const { toSimpleSqlObject, BasicPropertyTypeToParser, toToObjectResult } =
   parsers
 
 const { knexWrapper, ormQueryToKnex } = knexLib
+type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] }
 
 const create = ({
   knex,
@@ -30,7 +31,7 @@ const create = ({
     model: ModelType<T>
   ) => string
   propertyTypeToParser?: PropertyTypeToParser
-}): DatastoreAdapter => {
+}): WithRequired<DatastoreAdapter, 'bulkInsert' | 'count'> => {
   const wrappedKnex = knexWrapper(knex)
   const toJsonParser = toToObjectResult(propertyTypeToParser)
 
@@ -130,12 +131,18 @@ const create = ({
     })
   }
 
+  const count = <T extends DataDescription>(model: ModelType<T>) => {
+    const tableName = getTableNameForModel<T>(model)
+    return knex(tableName).count()
+  }
+
   return {
     bulkInsert,
     search,
     retrieve,
     save,
     delete: deleteObj,
+    count,
   }
 }
 

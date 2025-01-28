@@ -20,6 +20,10 @@
     "url": "git+https://github.com/monolithst/functional-models-orm-sql.git"
   },
   "nyc": {
+    "branches": 1,
+    "lines": 1,
+    "functions": 1,
+    "statements": 1,
     "extends": "@istanbuljs/nyc-config-typescript",
     "check-coverage": true,
     "all": true,
