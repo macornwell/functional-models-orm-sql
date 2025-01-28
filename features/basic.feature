@@ -2,7 +2,7 @@ Feature: Using SQLite3 as a Datastore Provider
 
   Scenario: Able to save a very simple Test Model
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And data SIMPLE_MODEL_1_DATA is used
     And an instance of SIMPLE_MODEL_1 is created using the model data
     When save is called on the model instance
@@ -10,7 +10,7 @@ Feature: Using SQLite3 as a Datastore Provider
 
   Scenario: Able to save a Test model 
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And data TEST_MODEL_1_DATA is used
     And an instance of TEST_MODEL_1 is created using the model data
     When save is called on the model instance
@@ -18,20 +18,20 @@ Feature: Using SQLite3 as a Datastore Provider
 
   Scenario: Able to save a model with a foreign key
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And data TEST_MODEL_1_DATA is used
     And an instance of TEST_MODEL_1 is created using the model data and added to a models list
     And data TEST_MODEL_2_DATA is used
     And an instance of TEST_MODEL_2 is created using the model data and added to a models list
     When save is called on all the models in the model list
-    And a knex select everything query is done on the table named TEST_MODEL_1_TABLE
+    And a knex select everything query is done on the table named TEST_MODEL_1
     Then the results has a length of 1
-    When a knex select everything query is done on the table named TEST_MODEL_2_TABLE
+    When a knex select everything query is done on the table named TEST_MODEL_2
     Then the results has a length of 1
 
   Scenario: Able to CRUD a Test Model
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And data TEST_MODEL_1_DATA is used
     And an instance of TEST_MODEL_1 is created using the model data
     When save is called on the model instance
@@ -45,7 +45,7 @@ Feature: Using SQLite3 as a Datastore Provider
 
   Scenario: Searching properties of models
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And loaded with models of DATED_MODEL using BULK_DATA_1
     When search on DATED_MODEL is called with QUERY_1
     Then the results has a length of 2
@@ -56,7 +56,7 @@ Feature: Using SQLite3 as a Datastore Provider
 
   Scenario: Searching models by dates
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And loaded with models of DATED_MODEL using BULK_DATA_1
     When search on DATED_MODEL is called with QUERY_4
     Then the results has a length of 1 
@@ -69,7 +69,7 @@ Feature: Using SQLite3 as a Datastore Provider
 
   Scenario: Can sort up and down by a property in a search
     Given a sqlite3 database is stood up with SETUP_1
-    And a datastoreProvider instance is created and an orm
+    And a datastoreAdapter instance is created and an orm
     And loaded with models of DATED_MODEL using BULK_DATA_1
     When search on DATED_MODEL is called with ASCENDING_SORT_QUERY_1
     Then the results matches ASCENDING_SORT_RESULT_1 when ignoring id

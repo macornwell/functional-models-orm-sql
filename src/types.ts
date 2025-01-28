@@ -1,4 +1,4 @@
-import { JsonAble } from 'functional-models/interfaces'
+import { JsonAble } from 'functional-models'
 
 export type SimpleSqlValue = number | string | boolean | null | undefined | Date
 

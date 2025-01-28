@@ -1,28 +1,33 @@
-import { EQUALITY_SYMBOLS } from 'functional-models-orm/constants'
 import {
-  DatesAfterStatement,
-  DatesBeforeStatement,
-  OrmQuery,
-  PropertyStatement,
-} from 'functional-models-orm/interfaces'
-import { PrimaryKeyType } from 'functional-models/interfaces'
+  BooleanQuery,
+  EqualitySymbol,
+  isALinkToken,
+  isPropertyBasedQuery,
+  OrmSearch,
+  PrimaryKeyType,
+  PropertyQuery,
+  Query,
+  QueryTokens,
+  SortOrder,
+  validateOrmSearch,
+} from 'functional-models'
 import flow from 'lodash/flow'
-import invoke from 'lodash/invoke'
-import { SimpleSqlObject, SimpleSqlOrmSearchResult } from '../interfaces'
+import { SimpleSqlObject, SimpleSqlOrmSearchResult } from '../types'
 
 export const ormQueryToKnex = (
   knex: any,
   table: string,
-  ormQuery: OrmQuery
+  ormSearch: OrmSearch
 ): Promise<SimpleSqlOrmSearchResult> => {
   return Promise.resolve().then(async () => {
+    validateOrmSearch(ormSearch)
     const _ifExistsDo =
       (key: string, func: (knexInstance: any, value: any) => any) =>
       (knexInstance: any) => {
         // @ts-ignore
-        if (ormQuery[key]) {
+        if (ormSearch[key]) {
           // @ts-ignore
-          return func(knexInstance, ormQuery[key])
+          return func(knexInstance, ormSearch[key])
         }
         return knexInstance
       }
@@ -35,61 +40,19 @@ export const ormQueryToKnex = (
       return knexInstance.limit(take)
     })
 
-    const datesBeforeQuery = _ifExistsDo(
-      'datesBefore',
-      (knexInstance: any, datesBefore: any) => {
-        return flow(
-          Object.entries(datesBefore as any).map(
-            ([_, value]: [key: any, value: any]) => {
-              const statement = value as DatesBeforeStatement
-              const date =
-                typeof statement.date === 'string'
-                  ? statement.date
-                  : statement.date.toISOString()
-              const symbol = statement.options.equalToAndBefore ? '<=' : '<'
-              return (k: any) => {
-                return k.where(statement.key, symbol, date)
-              }
-            }
-          )
-        )(knexInstance)
-      }
-    )
-
-    const datesAfterQuery = _ifExistsDo(
-      'datesAfter',
-      (knexInstance: any, datesAfter: any) => {
-        return flow(
-          Object.entries(datesAfter as any).map(
-            ([_, value]: [key: any, value: any]) => {
-              const statement = value as DatesAfterStatement
-              const date =
-                typeof statement.date === 'string'
-                  ? statement.date
-                  : statement.date.toISOString()
-              const symbol = statement.options.equalToAndAfter ? '>=' : '>'
-              return (k: any) => {
-                return k.where(statement.key, symbol, date)
-              }
-            }
-          )
-        )(knexInstance)
-      }
-    )
-
     const sortQuery = _ifExistsDo('sort', (knexInstance: any, sort: any) => {
-      const direction = sort.order ? undefined : 'desc'
+      const direction = sort.order === SortOrder.asc ? undefined : 'desc'
       return knexInstance.orderBy(sort.key, direction)
     })
 
-    const _createSearchString = (statement: PropertyStatement) => {
+    const _createSearchString = (statement: PropertyQuery) => {
       const value = statement.value
       const value2 = statement.options.startsWith ? `${value}%` : value
       const value3 = statement.options.endsWith ? `%${value2}` : value2
       return value3
     }
 
-    const _getWhereFuncKey = (statement: PropertyStatement, andOr: string) => {
+    const _getWhereFuncKey = (statement: PropertyQuery, andOr: string) => {
       if (statement.options.caseSensitive) {
         return andOr === 'and' ? 'whereILike' : 'orWhereILike'
       }
@@ -99,47 +62,72 @@ export const ormQueryToKnex = (
       return andOr === 'and' ? 'where' : 'orWhere'
     }
 
-    const _whereArgs = (statement: PropertyStatement, searchString: string) => {
-      if (
-        !statement.options.equalitySymbol ||
-        statement.options.equalitySymbol === EQUALITY_SYMBOLS.EQUALS
-      ) {
-        return [statement.name, searchString]
+    const _whereArgs = (statement: PropertyQuery, searchString: string) => {
+      if (statement.equalitySymbol === EqualitySymbol.eq) {
+        return [statement.key, searchString]
       }
-      return [statement.name, statement.options.equalitySymbol, searchString]
+      return [statement.key, statement.equalitySymbol, searchString]
     }
 
-    const propertyQueries = (knexInstance: any) => {
-      const flowResults = flow(
-        ormQuery.chain.map(statement => {
-          return ([k, andOr]: [k: any, andOr: string]) => {
-            if (
-              statement.type === 'and' ||
-              statement.type === 'or' ||
-              statement.type === 'property'
-            ) {
-              if (statement.type === 'property') {
-                const propertyStatement = statement as PropertyStatement
-                const searchString = _createSearchString(propertyStatement)
-                const whereStatement = _getWhereFuncKey(
-                  propertyStatement,
-                  andOr
-                )
-                const whereArgs = _whereArgs(propertyStatement, searchString)
-                return [invoke(k, whereStatement, ...whereArgs), andOr]
-              } else if (statement.type === 'and') {
-                return [k, 'and']
-              } else if (statement.type === 'or') {
-                return [k, 'or']
-              }
-            }
-            // Do nothing, this statement isn't handled here.
-            return [k, andOr]
-          }
-        })
-      )([knexInstance, 'and'])
-      return flowResults[0]
+    const _getPropertyArgs = (o: Query) => {
+      if (o.type === 'property') {
+        const value = _createSearchString(o)
+        return _whereArgs(o, value)
+      }
+      if (o.type === 'datesBefore') {
+        const symbol = o.options.equalToAndBefore ? '<=' : '<'
+        return [o.key, symbol, o.date]
+      }
+      if (o.type === 'datesAfter') {
+        const symbol = o.options.equalToAndAfter ? '>=' : '>'
+        return [o.key, symbol, o.date]
+      }
+      throw new Error('Impossible situation')
     }
+
+    const _getSimpleWhereFunc = (andOr: BooleanQuery) => {
+      return andOr === 'AND' ? 'where' : 'orWhere'
+    }
+
+    const _processToken =
+      (o: QueryTokens, andOr: 'AND' | 'OR') => (knexInstance: any) => {
+        if (isPropertyBasedQuery(o)) {
+          const whereKey =
+            o.type === 'property'
+              ? _getWhereFuncKey(o, andOr)
+              : _getSimpleWhereFunc(andOr)
+          return knexInstance[whereKey](..._getPropertyArgs(o as Query))
+        }
+
+        if (Array.isArray(o)) {
+          // Are we dealing with just a string of queries?
+          if (o.every(x => x !== 'AND' && x !== 'OR')) {
+            // All ANDS
+            return flow(
+              o.map(s => (k: any) => {
+                return _processToken(s, 'AND')(k)
+              })
+            )(knexInstance)
+          }
+
+          // We have a complex or intentional set of queries.
+          return o.reduce(
+            ([k, ao], a) => {
+              // If we have a link, we are just going to continue on
+              if (isALinkToken(a)) {
+                return [k, a]
+              }
+              const wKey = _getSimpleWhereFunc(ao || 'AND')
+              const k1 = k[wKey]((inner: any) => {
+                return _processToken(a, 'AND')(inner)
+              })
+              return [k1, undefined]
+            },
+            [knexInstance, andOr]
+          )[0]
+        }
+        throw new Error('Should never get here')
+      }
 
     const selectEverythingQuery = (k: any) => k.select('*')
     const fromTable = (k: any) => k.table(table)
@@ -147,9 +135,7 @@ export const ormQueryToKnex = (
     const result = await flow([
       selectEverythingQuery,
       fromTable,
-      propertyQueries,
-      datesBeforeQuery,
-      datesAfterQuery,
+      _processToken(ormSearch.query, 'AND'),
       takeQuery,
       pageQuery,
       sortQuery,

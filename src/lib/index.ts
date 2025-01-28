@@ -1,9 +1,12 @@
-import { FunctionalModel, Model } from 'functional-models/interfaces'
+import { DataDescription, ModelType } from 'functional-models'
+import kebabCase from 'lodash/kebabCase'
 import * as knex from './knex'
 import * as parsers from './parsers'
 
-const getTableNameForModel = <T extends FunctionalModel>(model: Model<T>) => {
-  return model.getName().toLowerCase().replace('_', '-').replace(' ', '-')
+const getTableNameForModel = <T extends DataDescription>(
+  model: ModelType<T>
+) => {
+  return kebabCase(model.getName()).toLowerCase()
 }
 
-export { knex, parsers, getTableNameForModel }
+export { getTableNameForModel, knex, parsers }

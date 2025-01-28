@@ -1,18 +1,14 @@
-import { PROPERTY_TYPES as DEFAULT_PROPERTY_TYPES } from 'functional-models/constants'
 import {
-  FunctionalModel,
+  DataDescription,
   JsonAble,
   JsonObj,
   ModelDefinition,
   PropertyInstance,
-  TypedJsonObj,
-} from 'functional-models/interfaces'
+  PropertyType,
+  ToObjectResult,
+} from 'functional-models'
 import merge from 'lodash/merge'
-import {
-  PropertyTypeToParser,
-  SimpleSqlObject,
-  SimpleSqlValue,
-} from '../interfaces'
+import { PropertyTypeToParser, SimpleSqlObject, SimpleSqlValue } from '../types'
 
 export const toSimpleSqlValue = (
   propertyType: string,
@@ -31,7 +27,7 @@ export const toSimpleSqlValue = (
   return value as SimpleSqlValue
 }
 
-export const toSimpleSqlObject = <T extends FunctionalModel>(
+export const toSimpleSqlObject = <T extends DataDescription>(
   definition: ModelDefinition<T>,
   obj: JsonObj
 ): SimpleSqlObject => {
@@ -90,17 +86,18 @@ export const bestGuessParser = nullParser((value: any): JsonAble => {
 })
 
 export const BasicPropertyTypeToParser: PropertyTypeToParser = {
-  [DEFAULT_PROPERTY_TYPES.UniqueId]: stringParser,
-  [DEFAULT_PROPERTY_TYPES.DateProperty]: dateParser,
-  [DEFAULT_PROPERTY_TYPES.ObjectProperty]: jsonParser,
-  [DEFAULT_PROPERTY_TYPES.ArrayProperty]: jsonParser,
-  [DEFAULT_PROPERTY_TYPES.ReferenceProperty]: stringParser,
-  [DEFAULT_PROPERTY_TYPES.IntegerProperty]: integerParser,
-  [DEFAULT_PROPERTY_TYPES.TextProperty]: stringParser,
-  [DEFAULT_PROPERTY_TYPES.ConstantValueProperty]: bestGuessParser,
-  [DEFAULT_PROPERTY_TYPES.NumberProperty]: floatParser,
-  [DEFAULT_PROPERTY_TYPES.EmailProperty]: stringParser,
-  [DEFAULT_PROPERTY_TYPES.BooleanProperty]: booleanParser,
+  [PropertyType.UniqueId]: stringParser,
+  [PropertyType.Date]: dateParser,
+  [PropertyType.Datetime]: dateParser,
+  [PropertyType.Object]: jsonParser,
+  [PropertyType.Array]: jsonParser,
+  [PropertyType.ModelReference]: stringParser,
+  [PropertyType.Integer]: integerParser,
+  [PropertyType.Text]: stringParser,
+  [PropertyType.BigText]: stringParser,
+  [PropertyType.Number]: floatParser,
+  [PropertyType.Email]: stringParser,
+  [PropertyType.Boolean]: booleanParser,
 }
 
 export const toJsonAble =
@@ -116,12 +113,12 @@ export const toJsonAble =
     return parser(value)
   }
 
-export const toTypedJsonObj =
+export const toToObjectResult =
   (propertyTypeToParser: PropertyTypeToParser) =>
-  <T extends FunctionalModel>(
+  <T extends DataDescription>(
     definition: ModelDefinition<T>,
     obj: any
-  ): TypedJsonObj<T> => {
+  ): ToObjectResult<T> => {
     const properties = definition.properties
     const parsers = toJsonAble(propertyTypeToParser)
     return Object.entries(properties)
@@ -133,5 +130,5 @@ export const toTypedJsonObj =
         const value = obj[key]
         const jsonAble = parsers(property, value)
         return merge(acc, { [key]: jsonAble })
-      }, {} as TypedJsonObj<T>)
+      }, {} as ToObjectResult<T>)
   }

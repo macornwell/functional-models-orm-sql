@@ -1,38 +1,43 @@
-import { DatastoreProvider, OrmQuery } from 'functional-models-orm/interfaces'
 import {
-  FunctionalModel,
-  Model,
+  DataDescription,
+  DatastoreAdapter,
   ModelInstance,
+  ModelType,
+  OrmSearch,
   PrimaryKeyType,
-} from 'functional-models/interfaces'
+} from 'functional-models'
 import groupBy from 'lodash/groupBy'
 import { mapLimit } from 'modern-async'
-import { PropertyTypeToParser } from './interfaces'
 import {
   getTableNameForModel as defaultTableNameGetter,
   knex as knexLib,
   parsers,
 } from './lib'
+import { PropertyTypeToParser } from './types'
 
-const { toSimpleSqlObject, BasicPropertyTypeToParser, toTypedJsonObj } = parsers
+const { toSimpleSqlObject, BasicPropertyTypeToParser, toToObjectResult } =
+  parsers
 
 const { knexWrapper, ormQueryToKnex } = knexLib
+type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] }
 
-const knexDatastoreProvider = ({
+const create = ({
   knex,
   getTableNameForModel = defaultTableNameGetter,
   propertyTypeToParser = BasicPropertyTypeToParser,
 }: {
   knex: any
-  getTableNameForModel?: <T extends FunctionalModel>(model: Model<T>) => string
+  getTableNameForModel?: <T extends DataDescription>(
+    model: ModelType<T>
+  ) => string
   propertyTypeToParser?: PropertyTypeToParser
-}): DatastoreProvider => {
+}): WithRequired<DatastoreAdapter, 'bulkInsert' | 'count'> => {
   const wrappedKnex = knexWrapper(knex)
-  const toJsonParser = toTypedJsonObj(propertyTypeToParser)
+  const toJsonParser = toToObjectResult(propertyTypeToParser)
 
-  const search = <T extends FunctionalModel>(
-    model: Model<T>,
-    ormQuery: OrmQuery
+  const search = <T extends DataDescription>(
+    model: ModelType<T>,
+    ormQuery: OrmSearch
   ) => {
     return Promise.resolve().then(async () => {
       const definitions = model.getModelDefinition()
@@ -48,14 +53,14 @@ const knexDatastoreProvider = ({
     })
   }
 
-  const retrieve = <T extends FunctionalModel>(
-    model: Model<T>,
+  const retrieve = <T extends DataDescription>(
+    model: ModelType<T>,
     id: PrimaryKeyType
   ) => {
     return Promise.resolve().then(async () => {
       const definitions = model.getModelDefinition()
       const tableName = getTableNameForModel<T>(model)
-      const key = model.getPrimaryKeyName()
+      const key = definitions.primaryKeyName
       const fromDb = await wrappedKnex.getByPrimaryKey(tableName, key, id)
       if (!fromDb) {
         return undefined
@@ -64,8 +69,8 @@ const knexDatastoreProvider = ({
     })
   }
 
-  const save = async <T extends FunctionalModel, TModel extends Model<T>>(
-    instance: ModelInstance<T, TModel>
+  const save = async <T extends DataDescription>(
+    instance: ModelInstance<T>
   ) => {
     return Promise.resolve().then(async () => {
       const model = instance.getModel()
@@ -73,7 +78,7 @@ const knexDatastoreProvider = ({
 
       const data = await instance.toObj()
       const formatted = toSimpleSqlObject(model.getModelDefinition(), data)
-      const key = model.getPrimaryKeyName()
+      const key = model.getModelDefinition().primaryKeyName
       await wrappedKnex.updateOrCreate(tableName, key, formatted)
       const id = await instance.getPrimaryKey()
       const fromDb = await wrappedKnex.getByPrimaryKey(tableName, key, id)
@@ -82,9 +87,9 @@ const knexDatastoreProvider = ({
     })
   }
 
-  const bulkInsert = async <T extends FunctionalModel, TModel extends Model<T>>(
-    model: TModel,
-    instances: readonly ModelInstance<T, TModel>[]
+  const bulkInsert = async <T extends DataDescription>(
+    model: ModelType<T>,
+    instances: readonly ModelInstance<T>[]
   ) => {
     return Promise.resolve().then(async () => {
       if (instances.length === 0) {
@@ -99,7 +104,7 @@ const knexDatastoreProvider = ({
       const tableName = getTableNameForModel<T>(model)
       const readyToSend = await mapLimit(
         instances,
-        async (instance: ModelInstance<T, TModel>) => {
+        async (instance: ModelInstance<T>) => {
           const obj = await instance.toObj()
           return toSimpleSqlObject(definitions, obj)
         },
@@ -112,19 +117,23 @@ const knexDatastoreProvider = ({
     })
   }
 
-  const deleteObj = <T extends FunctionalModel, TModel extends Model<T>>(
-    instance: ModelInstance<T, TModel>
+  const deleteObj = <T extends DataDescription>(
+    model: ModelType<T>,
+    primaryKey: PrimaryKeyType
   ) => {
     return Promise.resolve().then(async () => {
-      const model = instance.getModel()
       const tableName = getTableNameForModel<T>(model)
-      const primaryKey = await instance.getPrimaryKey()
-      const primaryKeyName = instance.getPrimaryKeyName()
+      const primaryKeyName = model.getModelDefinition().primaryKeyName
       await knex(tableName)
         .where({ [primaryKeyName]: primaryKey })
         .del(primaryKey)
       return
     })
+  }
+
+  const count = <T extends DataDescription>(model: ModelType<T>) => {
+    const tableName = getTableNameForModel<T>(model)
+    return knex(tableName).count()
   }
 
   return {
@@ -133,7 +142,8 @@ const knexDatastoreProvider = ({
     retrieve,
     save,
     delete: deleteObj,
+    count,
   }
 }
 
-export default knexDatastoreProvider
+export { create }
